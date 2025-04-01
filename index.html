@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurante La Buena Mesa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <h2>Iniciar Sesión</h2>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <input type="number" class="form-control" id="employeeNumber" placeholder="Número de empleado" required>
+                </div>
+                <div class="mb-3">
+                    <input type="password" class="form-control" id="employeePassword" placeholder="Contraseña" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" style="display: none;">
+        <!-- Header -->
+        <nav class="navbar bg-light">
+            <div class="container-fluid">
+                <span id="userInfo" class="navbar-brand"></span>
+                <button class="btn btn-outline-danger" id="logoutButton">Cerrar Sesión</button>
+            </div>
+        </nav>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="container mt-4" style="display: none;">
+            <h2>Panel de Administración</h2>
+            <ul class="nav nav-tabs mb-4" id="adminTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#ingresos">Ingresos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#inventario">Inventario</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#horarios">Horarios</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#meseros">Meseros</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#menuAdmin">Menú</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#mesasAdmin">Mesas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#configTransferencia">Transferencia</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Ingresos -->
+                <div class="tab-pane fade show active" id="ingresos">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Resumen del Día</h4>
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <h5 id="fechaActual"></h5>
+                                    <p class="display-4" id="ingresosHoy">$0.00</p>
+                                    <button class="btn btn-success" id="finalizarDia">Finalizar Día</button>
+                                </div>
+                            </div>
+                            <h4>Historial de Ingresos</h4>
+                            <div id="historialIngresos" class="list-group"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Detalle de Ventas</h4>
+                            <div id="detalleVentas" class="list-group"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventario -->
+                <div class="tab-pane fade" id="inventario">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Agregar Inventario</h4>
+                            <form id="formAgregarInventario">
+                                <div class="mb-3">
+                                    <select class="form-select" id="selectIngrediente" required>
+                                        <option value="" selected disabled>Seleccione ingrediente</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="number" class="form-control" id="cantidadAgregar" placeholder="Cantidad" min="1" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Agregar</button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Inventario Actual</h4>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Ingrediente</th>
+                                        <th>Cantidad</th>
+                                        <th>Unidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaInventario"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Horarios -->
+                <div class="tab-pane fade" id="horarios">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Registrar Horario</h4>
+                            <form id="formHorario">
+                                <div class="mb-3">
+                                    <select class="form-select" id="selectEmpleadoHorario" required>
+                                        <option value="" selected disabled>Seleccione empleado</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Hora de entrada</label>
+                                    <input type="time" class="form-control" id="horaEntrada" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Hora de salida</label>
+                                    <input type="time" class="form-control" id="horaSalida" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Guardar</button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Horarios Registrados</h4>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Empleado</th>
+                                        <th>Entrada</th>
+                                        <th>Salida</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaHorarios"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meseros -->
+                <div class="tab-pane fade" id="meseros">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Agregar Empleado</h4>
+                            <form id="formNuevoEmpleado">
+                                <div class="mb-3">
+                                    <input type="number" class="form-control" id="numeroEmpleado" placeholder="Número de empleado" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="nombreEmpleado" placeholder="Nombre completo" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="password" class="form-control" id="passwordEmpleado" placeholder="Contraseña" required>
+                                </div>
+                                <div class="mb-3">
+                                    <select class="form-select" id="rolEmpleado" required>
+                                        <option value="mesero">Mesero</option>
+                                        <option value="admin">Administrador</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Agregar</button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Lista de Empleados</h4>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Nombre</th>
+                                        <th>Rol</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaEmpleados"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menú Admin -->
+                <div class="tab-pane fade" id="menuAdmin">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Agregar Platillo</h4>
+                            <form id="formNuevoPlatillo">
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="nombrePlatillo" placeholder="Nombre del platillo" required>
+                                </div>
+                                <div class="mb-3">
+                                    <textarea class="form-control" id="descripcionPlatillo" placeholder="Descripción e ingredientes" required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="number" class="form-control" id="precioPlatillo" placeholder="Precio" min="1" step="0.01" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="imagenPlatillo" placeholder="URL de la imagen (jpg/png)" required>
+                                </div>
+                                <div class="mb-3">
+                                    <h5>Ingredientes</h5>
+                                    <div id="ingredientesContainer"></div>
+                                    <button type="button" class="btn btn-sm btn-secondary mt-2" id="agregarIngrediente">+ Añadir Ingrediente</button>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Agregar Platillo</button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Menú Actual</h4>
+                            <div id="listaPlatillosAdmin" class="row row-cols-1 g-3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mesas Admin -->
+                <div class="tab-pane fade" id="mesasAdmin">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Administrar Mesas</h4>
+                            <div class="row g-4" id="mesasAdminContainer"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Transferencia -->
+                <div class="tab-pane fade" id="configTransferencia">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Configuración de Transferencia Bancaria</h4>
+                            <div class="card">
+                                <div class="card-body" id="configTransferenciaContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menú de Mesero -->
+        <div id="meseroMenu" class="container mt-4" style="display: none;">
+            <h2>Menú de Mesero</h2>
+            <ul class="nav nav-tabs mb-4" id="meseroTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#menu">Menú</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#reservas">Reservas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#mesas">Mesas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#carrito">Carrito</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#pagos">Pagos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#historial">Historial</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Menú -->
+                <div class="tab-pane fade show active" id="menu">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="menuPlatillos"></div>
+                </div>
+
+                <!-- Reservas -->
+                <div class="tab-pane fade" id="reservas">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Nueva Reserva</h4>
+                            <form id="formReserva">
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="nombreReserva" placeholder="Nombre del cliente" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="number" class="form-control" id="personasReserva" placeholder="Número de personas" min="1" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="datetime-local" class="form-control" id="fechaReserva" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Reservar</button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Reservas Hoy</h4>
+                            <div id="listaReservas" class="list-group"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mesas -->
+                <div class="tab-pane fade" id="mesas">
+                    <div class="row g-4" id="mesasContainer"></div>
+                </div>
+
+                <!-- Carrito -->
+                <div class="tab-pane fade" id="carrito">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>Pedido Actual</h4>
+                            <div class="card">
+                                <div class="card-body">
+                                    <div id="detallePedido" class="mb-3"></div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5>Total: <span id="totalPedido">$0.00</span></h5>
+                                        <button class="btn btn-success" id="confirmarPedido">Confirmar Pedido</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagos -->
+                <div class="tab-pane fade" id="pagos">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Pedidos Pendientes</h4>
+                            <div id="listaPendientes" class="list-group mb-4"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Detalle de Pago</h4>
+                            <div class="card">
+                                <div class="card-body" id="detallePago">
+                                    <p class="text-muted">Seleccione un pedido para procesar el pago</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial -->
+                <div class="tab-pane fade" id="historial">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Historial de Pedidos</h4>
+                            <div id="historialPedidos" class="list-group"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Confirmar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="modalConfirm">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

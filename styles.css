@@ -1,0 +1,236 @@
+/* Estilos generales */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    color: #2a2a2a;
+}
+
+/* Login */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4') center/cover;
+}
+
+.login-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Navbar */
+.navbar {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Tarjetas */
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s;
+}
+
+.mesa-preparacion {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.mesa-libre {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.mesa-ocupada {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+/* Botones */
+.btn-primary {
+    background-color: #cdaa7c;
+    border-color: #cdaa7c;
+}
+
+.btn-primary:hover {
+    background-color: #b38a5a;
+    border-color: #b38a5a;
+}
+
+.btn-success {
+    background-color: #28a745;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+}
+
+/* Tablas */
+.table {
+    background-color: white;
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+    .login-box {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1rem;
+    }
+}
+
+/* Mesas */
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.btn-group .btn.active {
+    font-weight: bold;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Carrito */
+#detallePedido {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Modal */
+.modal-content {
+    border: none;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Tabs */
+.nav-tabs .nav-link {
+    color: #555;
+    border: none;
+    padding: 0.75rem 1.5rem;
+}
+
+.nav-tabs .nav-link.active {
+    color: #cdaa7c;
+    font-weight: bold;
+    border-bottom: 3px solid #cdaa7c;
+    background: transparent;
+}
+
+/* Listas */
+.list-group-item {
+    border: none;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Inputs */
+.form-control, .form-select {
+    border: 1px solid #ddd;
+    padding: 0.75rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #cdaa7c;
+    box-shadow: 0 0 0 0.25rem rgba(205, 170, 124, 0.25);
+}
+
+/* Imágenes */
+.card-img-top {
+    object-fit: cover;
+    height: 200px;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cdaa7c;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #b38a5a;
+}
+
+/* Nuevos estilos para mesas */
+.mesa-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.mesa-libre {
+    background-color: #28a745;
+}
+
+.mesa-ocupada {
+    background-color: #dc3545;
+}
+
+.mesa-numero {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+/* Estilos para el ticket de impresión */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .ticket, .ticket * {
+        visibility: visible;
+    }
+    .ticket {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}
+
+/* Estilos para la sección de pagos */
+#detallePago {
+    min-height: 300px;
+}
+
+/* Estilos para los botones de mesas */
+.btn-mesa {
+    width: 100%;
+    margin-bottom: 5px;
+}
