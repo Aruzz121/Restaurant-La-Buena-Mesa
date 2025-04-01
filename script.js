@@ -9,7 +9,7 @@ let pedidos = [];
 let ingresosDiarios = [];
 let mesasDisponibles = 10;
 let mesasOcupadas = {};
-let configTransferencia = {};
+let transferenciaConfig = {};
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
@@ -26,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function cargarDatosIniciales() {
+    const empleados = JSON.parse(localStorage.getItem('empleados')) || {};
+    if (Object.keys(empleados).length === 0 && !window.location.pathname.endsWith('login.html')) {
+        window.location.href = 'login.html';
+        return;
+    }
     // Cargar datos desde localStorage
     empleados = JSON.parse(localStorage.getItem('empleados')) || {};
     platillos = JSON.parse(localStorage.getItem('platillos')) || {};
@@ -36,8 +41,8 @@ function cargarDatosIniciales() {
     ingresosDiarios = JSON.parse(localStorage.getItem('ingresos')) || [];
     mesasDisponibles = parseInt(localStorage.getItem('mesasDisponibles')) || 10;
     mesasOcupadas = JSON.parse(localStorage.getItem('mesasOcupadas')) || {};
-    configTransferencia = JSON.parse(localStorage.getItem('configTransferencia')) || {};
-    
+    transferenciaConfig = JSON.parse(localStorage.getItem('transferenciaConfig')) || {};
+
     // Actualizar interfaces
     actualizarSelectEmpleados();
     actualizarTablaEmpleados();
@@ -66,7 +71,7 @@ function guardarDatos() {
     localStorage.setItem('ingresos', JSON.stringify(ingresosDiarios));
     localStorage.setItem('mesasDisponibles', mesasDisponibles.toString());
     localStorage.setItem('mesasOcupadas', JSON.stringify(mesasOcupadas));
-    localStorage.setItem('configTransferencia', JSON.stringify(configTransferencia));
+    localStorage.setItem('transferenciaConfig', JSON.stringify(transferenciaConfig));
 }
 
 function setupEventListeners() {
@@ -75,6 +80,9 @@ function setupEventListeners() {
 
     // Admin: Finalizar día
     document.getElementById('finalizarDia')?.addEventListener('click', finalizarDia);
+
+    // Admin: Resetear datos
+    document.getElementById('resetDataButton')?.addEventListener('click', resetData);
 
     // Admin: Inventario
     document.getElementById('formAgregarInventario')?.addEventListener('submit', (e) => {
@@ -177,10 +185,10 @@ function setupEventListeners() {
         }
     });
     
-    // Admin: Configuración de transferencia
-    document.getElementById('formConfigTransferencia')?.addEventListener('submit', (e) => {
+    // Admin: Config Transferencia
+    document.getElementById('formTransferencia')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        configTransferencia = {
+        transferenciaConfig = {
             nombreCuenta: document.getElementById('nombreCuenta').value,
             nombreBanco: document.getElementById('nombreBanco').value,
             numeroCuenta: document.getElementById('numeroCuenta').value,
@@ -226,29 +234,6 @@ function iniciarSesion(empleado) {
     document.getElementById('mainContent').style.display = 'block';
     document.getElementById('userInfo').textContent = `${empleado.nombre} (${empleado.numero})`;
 
-    // Registrar hora de entrada
-    const hoy = new Date().toLocaleDateString();
-    if (!horarios[empleado.numero]) {
-        horarios[empleado.numero] = {
-            empleadoId: empleado.numero,
-            nombre: empleado.nombre,
-            fecha: hoy,
-            entrada: new Date().toLocaleTimeString(),
-            salida: null
-        };
-    } else if (horarios[empleado.numero].fecha !== hoy) {
-        horarios[empleado.numero] = {
-            empleadoId: empleado.numero,
-            nombre: empleado.nombre,
-            fecha: hoy,
-            entrada: new Date().toLocaleTimeString(),
-            salida: null
-        };
-    }
-    
-    guardarDatos();
-    actualizarTablaHorarios();
-
     if (empleado.rol === 'admin') {
         document.getElementById('adminPanel').style.display = 'block';
         document.getElementById('meseroMenu').style.display = 'none';
@@ -260,12 +245,6 @@ function iniciarSesion(empleado) {
 }
 
 function logout() {
-    const empleado = JSON.parse(sessionStorage.getItem('empleado'));
-    if (empleado && horarios[empleado.numero]) {
-        horarios[empleado.numero].salida = new Date().toLocaleTimeString();
-        guardarDatos();
-    }
-    
     sessionStorage.removeItem('empleado');
     document.getElementById('mainContent').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
@@ -308,23 +287,35 @@ function finalizarDia() {
     hoy.setHours(0, 0, 0, 0);
     
     const total = pedidos.reduce((sum, pedido) => sum + pedido.total, 0);
+    const totalPropina = pedidos.reduce((sum, pedido) => sum + (pedido.propina || 0), 0);
     
     const ingresoId = 'ing' + Date.now();
     ingresosDiarios.push({
         id: ingresoId,
         fecha: hoy,
         total,
+        propina: totalPropina,
         pedidos: pedidos.length,
         detalles: pedidos.map(p => ({
             id: p.id,
             total: p.total,
-            mesero: p.meseroNombre
+            propina: p.propina || 0,
+            mesero: p.meseroNombre,
+            metodoPago: p.metodoPago
         }))
     });
     
     guardarDatos();
     actualizarHistorialIngresos();
-    mostrarModal('Día Finalizado', `Se registró un ingreso total de $${total.toFixed(2)}`);
+    mostrarModal('Día Finalizado', `Se registró un ingreso total de $${total.toFixed(2)} (Propinas: $${totalPropina.toFixed(2)})`);
+}
+
+function resetData() {
+    mostrarModal('Confirmar', '¿Está seguro que desea eliminar TODOS los datos? Esta acción no se puede deshacer.', () => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    });
 }
 
 function actualizarSelectEmpleados() {
@@ -338,58 +329,6 @@ function actualizarSelectEmpleados() {
         option.value = numero;
         option.textContent = `${numero} - ${empleados[numero].nombre}`;
         select.appendChild(option);
-    });
-}
-
-function editarEmpleado(numero) {
-    const empleado = empleados[numero];
-    if (!empleado) return;
-
-    mostrarModal('Editar Empleado', `
-        <form id="formEditarEmpleado">
-            <div class="mb-3">
-                <label class="form-label">Número de Empleado</label>
-                <input type="number" class="form-control" id="editNumeroEmpleado" value="${numero}" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Nombre</label>
-                <input type="text" class="form-control" id="editNombreEmpleado" value="${empleado.nombre}" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Nueva Contraseña (dejar vacío para no cambiar)</label>
-                <input type="password" class="form-control" id="editPasswordEmpleado">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Rol</label>
-                <select class="form-select" id="editRolEmpleado" required>
-                    <option value="mesero" ${empleado.rol === 'mesero' ? 'selected' : ''}>Mesero</option>
-                    <option value="admin" ${empleado.rol === 'admin' ? 'selected' : ''}>Administrador</option>
-                </select>
-            </div>
-        </form>
-    `, () => {
-        const nuevoNumero = document.getElementById('editNumeroEmpleado').value;
-        const nombre = document.getElementById('editNombreEmpleado').value;
-        const password = document.getElementById('editPasswordEmpleado').value;
-        const rol = document.getElementById('editRolEmpleado').value;
-
-        if (nuevoNumero && nombre && rol) {
-            // Si cambió el número, eliminamos el antiguo
-            if (nuevoNumero !== numero) {
-                delete empleados[numero];
-            }
-            
-            empleados[nuevoNumero] = {
-                nombre,
-                password: password || empleado.password,
-                rol,
-                activo: true
-            };
-            
-            guardarDatos();
-            actualizarTablaEmpleados();
-            actualizarSelectEmpleados();
-        }
     });
 }
 
@@ -407,13 +346,12 @@ function actualizarTablaEmpleados() {
             <td>${empleado.nombre}</td>
             <td>${empleado.rol}</td>
             <td>
-                <button class="btn btn-primary btn-sm" onclick="editarEmpleado('${numero}')">Editar</button>
-                <button class="btn btn-danger btn-sm ms-1" onclick="eliminarEmpleado('${numero}')">Eliminar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarEmpleado('${numero}')">Eliminar</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
-}y
+}
 
 function eliminarEmpleado(numero) {
     mostrarModal('Confirmar', `¿Eliminar empleado ${numero}?`, () => {
@@ -543,6 +481,16 @@ function eliminarPlatillo(id) {
     });
 }
 
+function actualizarConfigTransferencia() {
+    if (!document.getElementById('nombreCuenta')) return;
+    
+    document.getElementById('nombreCuenta').value = transferenciaConfig.nombreCuenta || '';
+    document.getElementById('nombreBanco').value = transferenciaConfig.nombreBanco || '';
+    document.getElementById('numeroCuenta').value = transferenciaConfig.numeroCuenta || '';
+    document.getElementById('clabe').value = transferenciaConfig.clabe || '';
+    document.getElementById('rfc').value = transferenciaConfig.rfc || '';
+}
+
 function actualizarHistorialIngresos() {
     const container = document.getElementById('historialIngresos');
     if (!container) return;
@@ -556,15 +504,14 @@ function actualizarHistorialIngresos() {
         div.innerHTML = `
             <div class="d-flex justify-content-between">
                 <div>
-                    <h6>${fecha} - ${ingreso.nombreCliente || 'Cliente no registrado'}</h6>
-                    <small>${ingreso.metodoPago} - $${ingreso.total.toFixed(2)} (Propina: $${ingreso.propina?.toFixed(2) || '0.00'})</small>
+                    <h6>${fecha}</h6>
+                    <small>${ingreso.detalles.length} pedidos - $${ingreso.total.toFixed(2)} (Propina: $${ingreso.propina?.toFixed(2) || '0.00'})</small>
                     <div class="mt-2">
                         <button class="btn btn-sm btn-info" onclick="verDetalleIngreso('${ingreso.id}')">Ver Detalle</button>
-                        <button class="btn btn-sm btn-primary ms-1" onclick="imprimirTicketAdmin('${ingreso.pedidoId}')">Imprimir Ticket</button>
                     </div>
                 </div>
                 <div>
-                    <strong>$${ingreso.totalConPropina?.toFixed(2) || ingreso.total.toFixed(2)}</strong>
+                    <strong>$${(ingreso.total + (ingreso.propina || 0)).toFixed(2)}</strong>
                 </div>
             </div>
         `;
@@ -576,39 +523,34 @@ function verDetalleIngreso(ingresoId) {
     const ingreso = ingresosDiarios.find(i => i.id === ingresoId);
     if (!ingreso) return;
     
-    const pedido = pedidos.find(p => p.id === ingreso.pedidoId);
-    
     let mensaje = `<h5>Detalle de Ingreso</h5>
         <p><strong>Fecha:</strong> ${new Date(ingreso.fecha).toLocaleString()}</p>
-        <p><strong>Cliente:</strong> ${ingreso.nombreCliente || 'No registrado'}</p>
-        <p><strong>Mesa:</strong> ${ingreso.mesa}</p>
-        <p><strong>Método de pago:</strong> ${ingreso.metodoPago}</p>
         <p><strong>Total:</strong> $${ingreso.total.toFixed(2)}</p>
         <p><strong>Propina:</strong> $${ingreso.propina?.toFixed(2) || '0.00'}</p>
-        <p><strong>Total con propina:</strong> $${ingreso.totalConPropina?.toFixed(2) || ingreso.total.toFixed(2)}</p>
-        <p><strong>Mesero:</strong> ${ingreso.meseroNombre}</p>`;
-    
-    if (pedido) {
-        mensaje += `
-            <p><strong>Hora de atención:</strong> ${pedido.horaAtendido}</p>
-            <p><strong>Hora de entrega:</strong> ${pedido.horaEntrega || 'No entregado'}</p>
-            <p><strong>Hora de cobro:</strong> ${ingreso.fechaPago ? new Date(ingreso.fechaPago).toLocaleTimeString() : 'No cobrado'}</p>
-        `;
-    }
-    
-    mensaje += `<hr><h6>Productos:</h6><ul>`;
-    
-    ingreso.productos.forEach(p => {
-        mensaje += `<li>${p.nombre} x${p.cantidad} - $${(p.precio * p.cantidad).toFixed(2)}</li>`;
-    });
-    
-    mensaje += `</ul>`;
-    
-    if (ingreso.pagado) {
-        mensaje += `<button class="btn btn-primary mt-2" onclick="imprimirTicketAdmin('${ingreso.pedidoId}')">Reimprimir Ticket</button>`;
-    } else {
-        mensaje += `<button class="btn btn-success mt-2" onclick="marcarComoPagado('${ingreso.id}')">Marcar como Pagado</button>`;
-    }
+        <hr>
+        <h6>Detalle de Pedidos:</h6>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Mesero</th>
+                    <th>Total</th>
+                    <th>Propina</th>
+                    <th>Método</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${ingreso.detalles.map(d => `
+                    <tr>
+                        <td>${d.id}</td>
+                        <td>${d.mesero}</td>
+                        <td>$${d.total.toFixed(2)}</td>
+                        <td>$${d.propina?.toFixed(2) || '0.00'}</td>
+                        <td>${d.metodoPago}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>`;
     
     document.getElementById('modalTitle').textContent = 'Detalle de Ingreso';
     document.getElementById('modalBody').innerHTML = mensaje;
@@ -616,27 +558,6 @@ function verDetalleIngreso(ingresoId) {
     
     const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
     modal.show();
-}
-
-function marcarComoPagado(ingresoId) {
-    const ingreso = ingresosDiarios.find(i => i.id === ingresoId);
-    if (!ingreso) return;
-    
-    ingreso.pagado = true;
-    ingreso.fechaPago = new Date();
-    
-    const pedido = pedidos.find(p => p.id === ingreso.pedidoId);
-    if (pedido) {
-        pedido.pagado = true;
-        pedido.fechaPago = new Date();
-        mesasOcupadas[pedido.mesa] = false;
-    }
-    
-    guardarDatos();
-    actualizarHistorialIngresos();
-    actualizarMesas();
-    
-    mostrarModal('Éxito', 'El ingreso ha sido marcado como pagado');
 }
 
 function actualizarDetalleVentas() {
@@ -653,13 +574,17 @@ function actualizarDetalleVentas() {
             <div class="d-flex justify-content-between">
                 <div>
                     <h6>${fecha} - ${pedido.meseroNombre}</h6>
+                    <small>Mesa ${pedido.mesa} - ${pedido.nombreCliente}</small>
                     <ul class="mb-1">
                         ${pedido.productos.map(p => 
                             `<li>${p.nombre} x${p.cantidad} ($${p.precio.toFixed(2)})</li>`
                         ).join('')}
                     </ul>
                 </div>
-                <strong>$${pedido.total.toFixed(2)}</strong>
+                <div>
+                    <strong>$${pedido.total.toFixed(2)}</strong>
+                    ${pedido.propina ? `<div class="text-success">+$${pedido.propina.toFixed(2)} propina</div>` : ''}
+                </div>
             </div>
         `;
         container.appendChild(div);
@@ -677,38 +602,8 @@ function calcularIngresosDia() {
     });
     
     const total = pedidosHoy.reduce((sum, pedido) => sum + pedido.total, 0);
-    document.getElementById('ingresosHoy').textContent = `$${total.toFixed(2)}`;
-}
-
-function actualizarConfigTransferencia() {
-    const container = document.getElementById('configTransferenciaContainer');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <form id="formConfigTransferencia">
-            <div class="mb-3">
-                <label class="form-label">Nombre de la Cuenta</label>
-                <input type="text" class="form-control" id="nombreCuenta" value="${configTransferencia.nombreCuenta || ''}" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Nombre del Banco</label>
-                <input type="text" class="form-control" id="nombreBanco" value="${configTransferencia.nombreBanco || ''}" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Número de Cuenta</label>
-                <input type="text" class="form-control" id="numeroCuenta" value="${configTransferencia.numeroCuenta || ''}" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">CLABE Interbancaria</label>
-                <input type="text" class="form-control" id="clabe" value="${configTransferencia.clabe || ''}" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">RFC</label>
-                <input type="text" class="form-control" id="rfc" value="${configTransferencia.rfc || ''}" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Guardar Configuración</button>
-        </form>
-    `;
+    const totalPropina = pedidosHoy.reduce((sum, pedido) => sum + (pedido.propina || 0), 0);
+    document.getElementById('ingresosHoy').textContent = `$${total.toFixed(2)} (Propina: $${totalPropina.toFixed(2)})`;
 }
 
 // ======== FUNCIONES PARA MESERO ======== //
@@ -718,69 +613,23 @@ function generarMesas() {
     
     container.innerHTML = '';
     
-    // Generar mesas
-    for (let i = 1; i <= mesasDisponibles; i++) {
-        const estado = mesasOcupadas[i] || 'libre';
-        const pedido = pedidos.find(p => p.mesa === i && !p.pagado);
-        
-        let claseColor = '';
-        let botones = '';
-        
-        if (estado === 'libre') {
-            claseColor = 'mesa-libre';
-            botones = `<button class="btn btn-sm btn-success" onclick="seleccionarMesa(${i})">Seleccionar</button>`;
-        } else if (estado === 'preparacion') {
-            claseColor = 'mesa-preparacion';
-            botones = `
-                <button class="btn btn-sm btn-warning" onclick="marcarComoEntregado(${i})">Entregar Pedido</button>
-                <button class="btn btn-sm btn-info" onclick="verPedidoMesa(${i})">Ver Pedido</button>
-            `;
-        } else if (estado === 'ocupada') {
-            claseColor = 'mesa-ocupada';
-            botones = `
-                <button class="btn btn-sm btn-primary" onclick="procesarPagoMesa(${i})">Pagar</button>
-                <button class="btn btn-sm btn-info" onclick="verPedidoMesa(${i})">Ver Pedido</button>
-            `;
-        }
-        
-        const div = document.createElement('div');
-        div.className = 'col-md-3 mb-4';
-        div.innerHTML = `
-            <div class="card text-center">
-                <div class="card-body">
-                    <div class="mesa-circle ${claseColor}">
-                        <h5 class="mesa-numero">${i}</h5>
+    // Botón para agregar mesas (solo admin)
+    const empleado = JSON.parse(sessionStorage.getItem('empleado'));
+    if (empleado.rol === 'admin') {
+        container.innerHTML += `
+            <div class="col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Administrar Mesas</h5>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="nuevoNumeroMesas" min="1" value="1">
+                            <button class="btn btn-primary" onclick="agregarMesas()">Agregar Mesas</button>
+                        </div>
                     </div>
-                    <div class="mt-2">
-                        ${botones}
-                    </div>
-                    ${pedido ? `<small class="text-muted">Atendido: ${pedido.horaAtendido}</small>` : ''}
                 </div>
             </div>
         `;
-        container.appendChild(div);
     }
-}
-
-function marcarComoEntregado(numeroMesa) {
-    const pedido = pedidos.find(p => p.mesa === numeroMesa && !p.pagado);
-    if (pedido) {
-        pedido.horaEntrega = new Date().toLocaleTimeString();
-        mesasOcupadas[numeroMesa] = 'ocupada';
-        guardarDatos();
-        actualizarMesas();
-        mostrarModal('Éxito', 'Pedido marcado como entregado');
-    }
-}
-
-function procesarPagoMesa(numeroMesa) {
-    const pedido = pedidos.find(p => p.mesa === numeroMesa && !p.pagado);
-    if (pedido) {
-        mostrarDetallePago(pedido.id);
-        const tab = new bootstrap.Tab(document.querySelector('#meseroTabs a[href="#pagos"]'));
-        tab.show();
-    }
-}
     
     // Generar mesas
     for (let i = 1; i <= mesasDisponibles; i++) {
@@ -889,68 +738,6 @@ function actualizarMenu() {
             container.appendChild(div);
         }
     });
-
-    // Mostrar carrito en tiempo real
-    const carritoContainer = document.createElement('div');
-    carritoContainer.className = 'col-12 mt-4';
-    carritoContainer.innerHTML = `
-        <div class="card">
-            <div class="card-header">
-                <h5>Carrito de Compras</h5>
-            </div>
-            <div class="card-body" id="carritoMenu">
-                ${carrito.length === 0 ? '<p class="text-muted">No hay items en el carrito</p>' : ''}
-            </div>
-            ${carrito.length > 0 ? `
-            <div class="card-footer">
-                <button class="btn btn-success" onclick="document.querySelector('#meseroTabs a[href=\'#carrito\']').click()">Ver Carrito Completo</button>
-            </div>
-            ` : ''}
-        </div>
-    `;
-    container.appendChild(carritoContainer);
-    actualizarCarritoMenu();
-}
-
-function actualizarCarritoMenu() {
-    const container = document.getElementById('carritoMenu');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (carrito.length === 0) {
-        container.innerHTML = '<p class="text-muted">No hay items en el carrito</p>';
-        return;
-    }
-    
-    let total = 0;
-    
-    carrito.forEach((item, index) => {
-        const subtotal = item.precio * item.cantidad;
-        total += subtotal;
-        
-        const div = document.createElement('div');
-        div.className = 'd-flex justify-content-between mb-2';
-        div.innerHTML = `
-            <div>
-                ${item.nombre} x${item.cantidad}
-                <small class="text-muted">($${item.precio.toFixed(2)} c/u)</small>
-            </div>
-            <div>
-                <strong>$${subtotal.toFixed(2)}</strong>
-                <button class="btn btn-danger btn-sm ms-2" onclick="eliminarDelCarrito(${index}); actualizarMenu()">X</button>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-    
-    const totalDiv = document.createElement('div');
-    totalDiv.className = 'd-flex justify-content-between mt-3 fw-bold';
-    totalDiv.innerHTML = `
-        <div>Total:</div>
-        <div>$${total.toFixed(2)}</div>
-    `;
-    container.appendChild(totalDiv);
 }
 
 function agregarAlCarrito(platilloId) {
@@ -1112,17 +899,14 @@ function confirmarPedido() {
             total,
             fecha: new Date(),
             estado: 'pendiente',
-            pagado: false,
-            horaAtendido: new Date().toLocaleTimeString(),
-            horaEntrega: null,
-            horaCobro: null
+            pagado: false
         };
         
         // Actualizar inventario
         const cambios = actualizarInventario(nuevoPedido);
         
         pedidos.push(nuevoPedido);
-        mesasOcupadas[numeroMesa] = 'preparacion'; // Cambiado para el nuevo sistema de colores
+        mesasOcupadas[numeroMesa] = true;
         
         guardarDatos();
         
@@ -1130,7 +914,6 @@ function confirmarPedido() {
         actualizarCarrito();
         actualizarMesas();
         actualizarListaPendientes();
-        actualizarMenu(); // Añadido para actualizar el carrito en tiempo real
         
         // Mostrar resumen
         let mensaje = 'Pedido registrado correctamente\n\n';
@@ -1248,14 +1031,13 @@ function mostrarDetallePago(pedidoId) {
         
         <div id="transferenciaContainer" style="display: none;">
             <div class="card mb-3">
-                <div class="card-header">
-                    Datos para Transferencia
-                </div>
                 <div class="card-body">
-                    <p><strong>Banco:</strong> ${configTransferencia.nombreBanco || 'No configurado'}</p>
-                    <p><strong>Nombre:</strong> ${configTransferencia.nombreCuenta || 'No configurado'}</p>
-                    <p><strong>CLABE:</strong> ${configTransferencia.clabe || 'No configurado'}</p>
-                    <p><strong>RFC:</strong> ${configTransferencia.rfc || 'No configurado'}</p>
+                    <h6>Datos para Transferencia</h6>
+                    <p><strong>Nombre:</strong> ${transferenciaConfig.nombreCuenta || 'No configurado'}</p>
+                    <p><strong>Banco:</strong> ${transferenciaConfig.nombreBanco || 'No configurado'}</p>
+                    <p><strong>Número de Cuenta:</strong> ${transferenciaConfig.numeroCuenta || 'No configurado'}</p>
+                    <p><strong>CLABE:</strong> ${transferenciaConfig.clabe || 'No configurado'}</p>
+                    <p><strong>RFC:</strong> ${transferenciaConfig.rfc || 'No configurado'}</p>
                 </div>
             </div>
         </div>
@@ -1269,11 +1051,10 @@ function mostrarDetallePago(pedidoId) {
     
     // Mostrar/ocultar secciones según método de pago
     document.getElementById('metodoPago').addEventListener('change', function() {
-        const metodo = this.value;
         document.getElementById('efectivoContainer').style.display = 
-            metodo === 'efectivo' ? 'block' : 'none';
+            this.value === 'efectivo' ? 'block' : 'none';
         document.getElementById('transferenciaContainer').style.display = 
-            metodo === 'transferencia' ? 'block' : 'none';
+            this.value === 'transferencia' ? 'block' : 'none';
     });
 }
 
@@ -1316,12 +1097,10 @@ function procesarPago(pedidoId) {
         id: ingresoId,
         fecha: new Date(),
         total: pedido.total,
-        totalConPropina: totalConPropina,
+        propina: propina,
         pedidoId: pedido.id,
-        nombreCliente: pedido.nombreCliente,
         mesa: pedido.mesa,
         metodoPago,
-        propina,
         productos: pedido.productos,
         pagado: true
     });
@@ -1330,6 +1109,7 @@ function procesarPago(pedidoId) {
     actualizarListaPendientes();
     actualizarMesas();
     actualizarHistorialIngresos();
+    actualizarDetalleVentas();
     
     // Mostrar resumen
     document.getElementById('resultadoPago').innerHTML = `
@@ -1369,6 +1149,7 @@ function imprimirTicket(pedidoId) {
                 <p><strong>Fecha:</strong> ${new Date(pedido.fecha).toLocaleString()}</p>
                 <p><strong>Mesa:</strong> ${pedido.mesa}</p>
                 <p><strong>Cliente:</strong> ${pedido.nombreCliente}</p>
+                <p><strong>Mesero:</strong> ${pedido.meseroNombre}</p>
                 <hr>
                 ${pedido.productos.map(p => `
                     <div class="item">
@@ -1399,78 +1180,21 @@ function imprimirTicket(pedidoId) {
                         <span>$${(pedido.efectivoRecibido - pedido.totalConPropina).toFixed(2)}</span>
                     </div>
                 ` : ''}
-                <div class="footer">
-                    <p>¡Gracias por su visita!</p>
-                    <p>${new Date().toLocaleString()}</p>
-                </div>
-            </div>
-        </body>
-        </html>
-    `);
-    ventana.document.close();
-    ventana.print();
-}
-
-function imprimirTicketAdmin(pedidoId) {
-    const pedido = pedidos.find(p => p.id === pedidoId);
-    if (!pedido) return;
-    
-    const ventana = window.open('', '_blank');
-    ventana.document.write(`
-        <html>
-        <head>
-            <title>Ticket Admin #${pedido.id}</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .ticket { width: 300px; margin: 0 auto; }
-                .header { text-align: center; margin-bottom: 15px; }
-                .item { display: flex; justify-content: space-between; margin: 5px 0; }
-                .total { font-weight: bold; border-top: 1px dashed #000; padding-top: 5px; margin-top: 10px; }
-                .footer { text-align: center; margin-top: 15px; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <div class="ticket">
-                <div class="header">
-                    <h3>Restaurante La Buena Mesa</h3>
-                    <p>Ticket Admin #${pedido.id}</p>
-                </div>
-                <p><strong>Fecha:</strong> ${new Date(pedido.fecha).toLocaleString()}</p>
-                <p><strong>Mesa:</strong> ${pedido.mesa}</p>
-                <p><strong>Cliente:</strong> ${pedido.nombreCliente}</p>
-                <p><strong>Mesero:</strong> ${pedido.meseroNombre}</p>
-                <hr>
-                ${pedido.productos.map(p => `
-                    <div class="item">
-                        <span>${p.nombre} x${p.cantidad}</span>
-                        <span>$${(p.precio * p.cantidad).toFixed(2)}</span>
-                    </div>
-                `).join('')}
-                <div class="item">
-                    <span>Subtotal:</span>
-                    <span>$${pedido.total.toFixed(2)}</span>
-                </div>
-                <div class="item">
-                    <span>Propina:</span>
-                    <span>$${pedido.propina?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div class="item total">
-                    <span>Total:</span>
-                    <span>$${pedido.totalConPropina?.toFixed(2) || pedido.total.toFixed(2)}</span>
-                </div>
-                <p><strong>Método de pago:</strong> ${pedido.metodoPago}</p>
-                ${pedido.metodoPago === 'efectivo' ? `
-                    <div class="item">
-                        <span>Efectivo recibido:</span>
-                        <span>$${pedido.efectivoRecibido.toFixed(2)}</span>
-                    </div>
-                    <div class="item">
-                        <span>Cambio:</span>
-                        <span>$${(pedido.efectivoRecibido - pedido.totalConPropina).toFixed(2)}</span>
+                ${pedido.metodoPago === 'transferencia' ? `
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6>Datos para Transferencia</h6>
+                            <p><strong>Nombre:</strong> ${transferenciaConfig.nombreCuenta || 'No configurado'}</p>
+                            <p><strong>Banco:</strong> ${transferenciaConfig.nombreBanco || 'No configurado'}</p>
+                            <p><strong>Número de Cuenta:</strong> ${transferenciaConfig.numeroCuenta || 'No configurado'}</p>
+                            <p><strong>CLABE:</strong> ${transferenciaConfig.clabe || 'No configurado'}</p>
+                            <p><strong>RFC:</strong> ${transferenciaConfig.rfc || 'No configurado'}</p>
+                        </div>
                     </div>
                 ` : ''}
                 <div class="footer">
-                    <p>Ticket generado el ${new Date().toLocaleString()}</p>
+                    <p>¡Gracias por su visita!</p>
+                    <p>${new Date().toLocaleString()}</p>
                 </div>
             </div>
         </body>
@@ -1484,6 +1208,8 @@ function imprimirTicketAdmin(pedidoId) {
 window.eliminarEmpleado = eliminarEmpleado;
 window.eliminarHorario = eliminarHorario;
 window.eliminarPlatillo = eliminarPlatillo;
+window.eliminarIngreso = eliminarIngreso;
+window.cambiarEstadoMesa = cambiarEstadoMesa;
 window.agregarAlCarrito = agregarAlCarrito;
 window.eliminarDelCarrito = eliminarDelCarrito;
 window.cancelarReserva = cancelarReserva;
@@ -1494,6 +1220,6 @@ window.verPedidoMesa = verPedidoMesa;
 window.mostrarDetallePago = mostrarDetallePago;
 window.procesarPago = procesarPago;
 window.imprimirTicket = imprimirTicket;
-window.imprimirTicketAdmin = imprimirTicketAdmin;
 window.verDetalleIngreso = verDetalleIngreso;
 window.marcarComoPagado = marcarComoPagado;
+window.resetData = resetData;

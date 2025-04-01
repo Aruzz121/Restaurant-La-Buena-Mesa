@@ -1,4 +1,4 @@
-// auth/auth.js - Versión local
+// auth/auth.js - Versión mejorada
 
 /**
  * Función para login de empleados con localStorage
@@ -15,6 +15,12 @@ window.loginEmpleado = async (numeroEmpleado, password) => {
 
         // Obtener empleados de localStorage
         const empleados = JSON.parse(localStorage.getItem('empleados')) || {};
+        
+        // Verificar si hay usuarios registrados
+        if (Object.keys(empleados).length === 0) {
+            throw new Error("No hay usuarios registrados. Recargue la página para configurar el administrador.");
+        }
+        
         const empleado = empleados[numeroEmpleado];
         
         if (!empleado) {
@@ -23,6 +29,10 @@ window.loginEmpleado = async (numeroEmpleado, password) => {
         
         if (empleado.password !== password) {
             throw new Error("Contraseña incorrecta");
+        }
+        
+        if (!empleado.activo) {
+            throw new Error("Cuenta desactivada");
         }
         
         // Datos para guardar en sesión
@@ -39,4 +49,13 @@ window.loginEmpleado = async (numeroEmpleado, password) => {
         console.error("Error en autenticación:", error);
         throw error;
     }
+};
+
+/**
+ * Función para verificar si hay usuarios registrados
+ * @returns {boolean} - True si hay usuarios registrados, false si no
+ */
+window.hayUsuariosRegistrados = () => {
+    const empleados = JSON.parse(localStorage.getItem('empleados')) || {};
+    return Object.keys(empleados).length > 0;
 };

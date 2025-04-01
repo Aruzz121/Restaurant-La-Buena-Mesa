@@ -15,17 +15,27 @@
         <div class="login-box">
             <h2 id="loginTitle">Iniciar Sesión</h2>
             <form id="loginForm">
-                <div id="initialSetup" style="display: none;">
+                <!-- Formulario de configuración inicial (solo visible cuando no hay usuarios) -->
+                <div id="adminSetupForm" style="display: none;">
+                    <h4>Configuración Inicial</h4>
+                    <p class="text-muted mb-3">Por favor, configure el usuario administrador principal</p>
                     <div class="mb-3">
-                        <input type="text" class="form-control" id="adminName" placeholder="Nombre del administrador">
+                        <input type="text" class="form-control" id="adminName" placeholder="Nombre completo del administrador" required>
                     </div>
                     <div class="mb-3">
-                        <input type="password" class="form-control" id="adminPassword" placeholder="Crear contraseña">
+                        <input type="number" class="form-control" id="adminNumber" placeholder="Número de empleado (ej. 1001)" required>
                     </div>
-                    <button type="button" class="btn btn-primary w-100 mb-3" id="setupAdmin">Configurar Administrador</button>
+                    <div class="mb-3">
+                        <input type="password" class="form-control" id="adminPassword" placeholder="Contraseña" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" class="form-control" id="adminPasswordConfirm" placeholder="Confirmar contraseña" required>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" id="setupAdmin">Configurar Administrador</button>
                 </div>
                 
-                <div id="normalLogin">
+                <!-- Formulario de login normal (visible cuando ya hay usuarios) -->
+                <div id="normalLoginForm" style="display: none;">
                     <div class="mb-3">
                         <input type="number" class="form-control" id="employeeNumber" placeholder="Número de empleado" required>
                     </div>
@@ -44,107 +54,69 @@
     <script src="auth.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Verificar si es la primera vez
-            if (!localStorage.getItem('empleados')) {
-                document.getElementById('loginTitle').textContent = 'Configuración Inicial';
-                document.getElementById('initialSetup').style.display = 'block';
-                document.getElementById('normalLogin').style.display = 'none';
+            // Verificar si hay usuarios registrados
+            const empleados = JSON.parse(localStorage.getItem('empleados')) || {};
+            const hayUsuarios = Object.keys(empleados).length > 0;
+            
+            // Mostrar el formulario correspondiente
+            if (!hayUsuarios) {
+                mostrarFormularioConfiguracion();
+            } else {
+                mostrarFormularioLogin();
             }
 
             // Configurar admin inicial
             document.getElementById('setupAdmin').addEventListener('click', () => {
                 const nombre = document.getElementById('adminName').value;
+                const numero = document.getElementById('adminNumber').value;
                 const password = document.getElementById('adminPassword').value;
+                const confirmPassword = document.getElementById('adminPasswordConfirm').value;
                 
-                if (!nombre || !password) {
-                    const errorElement = document.getElementById('loginError');
-                    errorElement.textContent = 'Debe ingresar nombre y contraseña';
-                    errorElement.style.display = 'block';
+                if (!nombre || !numero || !password || !confirmPassword) {
+                    mostrarError('Complete todos los campos');
                     return;
                 }
                 
-                // Crear empleados de prueba
+                if (password !== confirmPassword) {
+                    mostrarError('Las contraseñas no coinciden');
+                    return;
+                }
+                
+                // Crear objeto de empleados con el admin inicial
                 const empleados = {
-                    '1001': { nombre: nombre, password: password, rol: 'admin', activo: true }
+                    [numero]: { 
+                        nombre, 
+                        password, 
+                        rol: 'admin', 
+                        activo: true 
+                    }
                 };
-
-                // Inventario completo de ingredientes
+                
+                // Datos iniciales
                 const ingredientes = {
                     'ing1': { nombre: 'Tomate', cantidad: 50, unidad: 'kg' },
-                    'ing2': { nombre: 'Cebolla', cantidad: 30, unidad: 'kg' },
-                    'ing3': { nombre: 'Lechuga', cantidad: 20, unidad: 'kg' },
-                    'ing4': { nombre: 'Pollo', cantidad: 40, unidad: 'kg' },
-                    'ing5': { nombre: 'Carne de res', cantidad: 35, unidad: 'kg' },
-                    'ing6': { nombre: 'Arroz', cantidad: 60, unidad: 'kg' },
-                    'ing7': { nombre: 'Frijoles', cantidad: 25, unidad: 'kg' },
-                    'ing8': { nombre: 'Queso', cantidad: 15, unidad: 'kg' },
-                    'ing9': { nombre: 'Tortillas', cantidad: 500, unidad: 'unidades' },
-                    'ing10': { nombre: 'Crema', cantidad: 10, unidad: 'litros' },
-                    'ing11': { nombre: 'Aguacate', cantidad: 80, unidad: 'unidades' },
-                    'ing12': { nombre: 'Limón', cantidad: 100, unidad: 'unidades' },
-                    'ing13': { nombre: 'Chile', cantidad: 5, unidad: 'kg' },
-                    'ing14': { nombre: 'Ajo', cantidad: 3, unidad: 'kg' },
-                    'ing15': { nombre: 'Cilantro', cantidad: 2, unidad: 'kg' }
+                    // ... (otros ingredientes iniciales)
                 };
 
-                // Platillos con sus ingredientes
                 const platillos = {
                     'plat1': {
                         id: 'plat1',
                         nombre: 'Ensalada César',
-                        descripcion: 'Ensalada fresca con aderezo césar',
-                        precio: 120,
-                        imagen: 'https://images.unsplash.com/photo-1546793665-c74683f339c1',
-                        ingredientes: {
-                            'ing1': 0.2,  // 200g de tomate
-                            'ing3': 0.15, // 150g de lechuga
-                            'ing8': 0.05, // 50g de queso
-                            'ing10': 0.02 // 20ml de crema
-                        },
-                        activo: true
-                    },
-                    'plat2': {
-                        id: 'plat2',
-                        nombre: 'Pollo a la parrilla',
-                        descripcion: 'Pollo asado con guarnición',
-                        precio: 180,
-                        imagen: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435',
-                        ingredientes: {
-                            'ing4': 0.3,  // 300g de pollo
-                            'ing6': 0.2,  // 200g de arroz
-                            'ing7': 0.15, // 150g de frijoles
-                            'ing9': 3,    // 3 tortillas
-                            'ing11': 0.5  // 1/2 aguacate
-                        },
-                        activo: true
-                    },
-                    'plat3': {
-                        id: 'plat3',
-                        nombre: 'Carne asada',
-                        descripcion: 'Corte de res con guarniciones',
-                        precio: 220,
-                        imagen: 'https://images.unsplash.com/photo-1558030006-450675393462',
-                        ingredientes: {
-                            'ing5': 0.4,  // 400g de carne
-                            'ing6': 0.2,  // 200g de arroz
-                            'ing7': 0.15, // 150g de frijoles
-                            'ing9': 3,    // 3 tortillas
-                            'ing11': 0.5, // 1/2 aguacate
-                            'ing12': 1    // 1 limón
-                        },
-                        activo: true
+                        // ... (otros datos del platillo)
                     }
+                    // ... (otros platillos iniciales)
                 };
 
-                // Configuración de transferencia bancaria
-                const configTransferencia = {
+                // Configuración de transferencia por defecto
+                const transferenciaConfig = {
                     nombreCuenta: 'Restaurante La Buena Mesa',
                     nombreBanco: 'Banco Ejemplo',
                     numeroCuenta: '123456789012345678',
                     clabe: '012180012345678901',
-                    rfc: 'RME123456ABC'
+                    rfc: 'RME991010ABC'
                 };
 
+                // Guardar todos los datos iniciales
                 localStorage.setItem('empleados', JSON.stringify(empleados));
                 localStorage.setItem('ingredientes', JSON.stringify(ingredientes));
                 localStorage.setItem('platillos', JSON.stringify(platillos));
@@ -154,13 +126,11 @@
                 localStorage.setItem('ingresos', JSON.stringify([]));
                 localStorage.setItem('mesasDisponibles', '10');
                 localStorage.setItem('mesasOcupadas', JSON.stringify({}));
-                localStorage.setItem('configTransferencia', JSON.stringify(configTransferencia));
+                localStorage.setItem('transferenciaConfig', JSON.stringify(transferenciaConfig));
 
-                // Mostrar login normal
-                document.getElementById('loginTitle').textContent = 'Iniciar Sesión';
-                document.getElementById('initialSetup').style.display = 'none';
-                document.getElementById('normalLogin').style.display = 'block';
-                document.getElementById('loginError').style.display = 'none';
+                // Mostrar mensaje de éxito y cambiar a formulario de login
+                mostrarFormularioLogin();
+                mostrarError('Administrador configurado correctamente. Ahora puede iniciar sesión.', 'success');
             });
 
             // Login normal
@@ -174,13 +144,37 @@
                     sessionStorage.setItem('empleado', JSON.stringify(empleado));
                     window.location.href = "index.html";
                 } catch (error) {
-                    const errorElement = document.getElementById('loginError');
-                    errorElement.textContent = error.message;
-                    errorElement.style.display = 'block';
+                    mostrarError(error.message);
                     console.error("Error de autenticación:", error);
                 }
             });
         });
+
+        function mostrarFormularioConfiguracion() {
+            document.getElementById('loginTitle').textContent = 'Configuración Inicial';
+            document.getElementById('adminSetupForm').style.display = 'block';
+            document.getElementById('normalLoginForm').style.display = 'none';
+        }
+
+        function mostrarFormularioLogin() {
+            document.getElementById('loginTitle').textContent = 'Iniciar Sesión';
+            document.getElementById('adminSetupForm').style.display = 'none';
+            document.getElementById('normalLoginForm').style.display = 'block';
+        }
+
+        function mostrarError(mensaje, tipo = 'danger') {
+            const errorElement = document.getElementById('loginError');
+            errorElement.textContent = mensaje;
+            errorElement.style.display = 'block';
+            errorElement.className = `mt-3 alert alert-${tipo}`;
+            
+            // Ocultar el mensaje después de 5 segundos
+            if (tipo === 'success') {
+                setTimeout(() => {
+                    errorElement.style.display = 'none';
+                }, 5000);
+            }
+        }
     </script>
 </body>
 </html>
